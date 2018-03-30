@@ -5,6 +5,48 @@ from tqdm import tqdm
 import cv2, os
 import numpy as np
 
+def RectClipRect(rectA, rectB):
+    x0 = max(rectA.x,rectB.x)
+    y0 = max(rectA.y,rectB.y)
+    x1 = min(rectA.x+rectA.width,rectB.x+rectB.width)-1
+    y1 = min(rectA.y+rectA.height,rectB.y+rectB.height)-1
+
+    rect = Rect(x0,y0,x1-x0+1,y1-y0+1)
+    return rect
+
+def extract_obj_from_jitterzone(objects_list, zone, overlap_th = 0.5):
+
+    overlap_list = []
+    overlap_obj = []
+
+    # print "++++++++++++++++++++++++++++++"
+    for obj in objects_list:
+        overRect = RectClipRect(obj.rect,zone)
+        if overRect.width <= 0 or overRect.height <= 0:
+            continue
+
+        area_overRect = overRect.width*overRect.height
+        area_A = obj.rect.width*obj.rect.height
+        area_B = zone.width*zone.height
+
+        overlap_A = (float)(area_overRect) / area_A
+        overlap_B = (float)(area_overRect) / area_B
+
+        overlap = max(overlap_A,overlap_B)
+
+        if overlap > overlap_th:
+            overlap_list.append(overlap)
+            overlap_obj.append(obj)
+
+        # print overlap_A, overlap_B
+
+    # print "============================", len(overlap_list)
+    # if len(overlap_list)>1:
+    #     for overlap in overlap_list:
+    #         print "***",overlap
+
+    return overlap_obj
+
 def image_2_rect_obj_with_jitter(img, single_obj, save_dir, range0 = 0.25, range1 = 0.9, num = 40):
     obj = single_obj
 
@@ -48,48 +90,61 @@ def image_2_rect_obj_with_jitter(img, single_obj, save_dir, range0 = 0.25, range
 
     return jitter_rect
 
-def RectClipRect(rectA, rectB):
-    x0 = max(rectA.x,rectB.x)
-    y0 = max(rectA.y,rectB.y)
-    x1 = min(rectA.x+rectA.width,rectB.x+rectB.width)-1
-    y1 = min(rectA.y+rectA.height,rectB.y+rectB.height)-1
+def write_image_and_annotation(image, basename, parent_source, parent_obj,
+        cur_zone, save_width, save_height, bShow = True):
+    savename_jpg = basename + ".jpg"
+    savename_xml = basename + ".xml"
 
-    rect = Rect(x0,y0,x1-x0+1,y1-y0+1)
-    return rect
+    saveshortname_jpg = os.path.basename(savename_jpg)
+    saveshortname_xml = os.path.basename(savename_xml)
 
-def extract_obj_from_jitterzone(objects_list, zone, overlap_th = 0.5):
+    # write source info
+    s = copy.deepcopy(parent_source)
+    s.folder = os.path.dirname(savename_jpg)
+    s.filename = saveshortname_jpg
+    s.path = savename_jpg
 
-    overlap_list = []
-    overlap_obj = []
+    s.parent = parent_source.path
+    s.fingerprint = ""
 
-    # print "++++++++++++++++++++++++++++++"
-    for obj in objects_list:
-        overRect = RectClipRect(obj.rect,zone)
-        if overRect.width <= 0 or overRect.height <= 0:
-            continue
+    # write object info
+    for i in range(len(parent_obj)):
+        obj = copy.deepcopy(parent_obj[i])
 
-        area_overRect = overRect.width*overRect.height
-        area_A = obj.rect.width*obj.rect.height
-        area_B = zone.width*zone.height
+        obj.rect.x -= cur_zone[i].x
+        obj.rect.y -= cur_zone[i].y
+        obj.parent_zone = cur_zone[i]
 
-        overlap_A = (float)(area_overRect) / area_A
-        overlap_B = (float)(area_overRect) / area_B
+        subarr = get_subarr(image, obj.parent_zone)
 
-        overlap = max(overlap_A,overlap_B)
+        # if bOrignal == True:
+        #     s.width, s.height, s.depth = get_image_size(subarr)
+        #     if bShow == True:
+        #         vi_draw_rect_GREEN(subarr,obj.rect)
+        #     cv2.imwrite(savename_jpg,subarr)
+        # else:
+        scale_x = (float)(save_width)/obj.parent_zone.width
+        scale_y = (float)(save_height)/obj.parent_zone.height
 
-        if overlap > overlap_th:
-            overlap_list.append(overlap)
-            overlap_obj.append(obj)
+        rect = Rect()
+        rect.x = (int)(obj.rect.x*scale_x)
+        rect.y = (int)(obj.rect.y*scale_y)
+        rect.width = (int)(obj.rect.width*scale_x)
+        rect.height = (int)(obj.rect.height*scale_y)
 
-        # print overlap_A, overlap_B
+        save_patch = subarr
+        if obj.rect.x != rect.x or obj.rect.y != rect.y or obj.rect.width != rect.width or obj.rect.height != rect.height:
+            obj.rect = rect
+            save_patch = cv2.resize(subarr,(save_width,save_height))
 
-    # print "============================", len(overlap_list)
-    # if len(overlap_list)>1:
-    #     for overlap in overlap_list:
-    #         print "***",overlap
+        s.width, s.height, s.depth = get_image_size(save_patch)
+        if bShow == True:
+            vi_draw_rect_GREEN(save_patch,obj.rect)
 
-    return overlap_obj
-
+        cv2.imwrite(savename_jpg,save_patch)
+        xml_write_rect_object(savename_xml,s,[obj])
+        # cv2.imshow("subarr",subarr)
+        # cv2.waitKey(1000)
 
 def select_face_from_package_with_jitter(package_dir, pull_dir):
     db = DB_Image_Annotation()
@@ -110,8 +165,8 @@ def select_face_from_package_with_jitter(package_dir, pull_dir):
 
     for i in tqdm(range(records_num)):
         if db.next() == True:
-            # (key, val_i, val_a) = db.item(image=False)
             (key, val_i, val_a) = db.item()
+            # Read annotation
             source, object, bsucc = xml_parse_get_rect_object_str(val_a)
 
             if bsucc == True:
@@ -132,14 +187,9 @@ def select_face_from_package_with_jitter(package_dir, pull_dir):
                     obj = object[m]
                     whrate = (float)(obj.rect.width)/obj.rect.height
 
-                    subarr, zone, subrect = image_2_rect_obj(x,obj)
-
                     if obj.rect.width > 25 and 0.8<=whrate and whrate<=1.1:
-                        # print foldername, total_export, max_folder_num, folder_idx, total_export % max_folder_num
 
                         jitter_rect = image_2_rect_obj_with_jitter(x,obj,pull_dir,0.25,0.9,100)
-
-                        # print "\t\t >>>>>>>>>>>>>", len(jitter_rect)
 
                         everymaxnum = 40
                         cur_count = 0
@@ -149,7 +199,6 @@ def select_face_from_package_with_jitter(package_dir, pull_dir):
                                 break
 
                             subarr = get_subarr(x, jrect)
-                            # crope = cv2.resize(subarr,(32*4,32*4))
 
                             obj = extract_obj_from_jitterzone(object,jrect,0.2)
                             if len(obj) == 1:
@@ -161,13 +210,20 @@ def select_face_from_package_with_jitter(package_dir, pull_dir):
                                 if False == os.path.exists(foldername):
                                     os.mkdir(foldername)
 
-                                savename = "%s.jpg" % total_export
-                                savedir = os.path.join(foldername,(str)(savename))
+                                # Write image and annotation
+                                write_basename = "%s_%03d" % (os.path.join(foldername,basename),cur_count)
 
-                                cv2.imwrite(savedir,subarr)
+                                # write_image_and_annotation(x,write_basename,
+                                #     source,obj,[jrect],
+                                #     jrect.width,jrect.height,
+                                #     False)
+
+                                write_image_and_annotation(x,write_basename,
+                                    source,obj,[jrect],
+                                    32, 32,
+                                    False)
 
                                 total_export+=1
-                                # print total_export
 
     print "total_export: %d / %d (%f%%)" % (total_export,total_samples,total_export*100.0/total_samples)
 
@@ -176,10 +232,14 @@ def select_face_from_package_with_jitter(package_dir, pull_dir):
 
 if __name__ == '__main__':
     package_dir = u'/home/racine/datasets/rxface/package/VzenithFace_30k'
-    pull_dir = u'/tmp/test/pull'
+    pull_dir = u'/home/racine/workdatas/test/pull/norm_32x32'
+    # pull_dir = u'/tmp/test/pull/org'
 
-    if False == os.path.exists(u'/tmp/test'):
-        os.mkdir(u'/tmp/test/')
+    if False == os.path.exists(u'/home/racine/workdatas/test'):
+        os.mkdir(u'/home/racine/workdatas/test/')
+
+    if False == os.path.exists(u'/home/racine/workdatas/test/pull'):
+        os.mkdir(u'/home/racine/workdatas/test/pull')
 
     if False == os.path.exists(pull_dir):
         os.mkdir(pull_dir)
