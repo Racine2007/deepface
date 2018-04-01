@@ -185,11 +185,13 @@ def select_face_from_package_with_jitter(package_dir, pull_dir):
                 for m in range(len(object)):
                     total_samples+=1
                     obj = object[m]
-                    whrate = (float)(obj.rect.width)/obj.rect.height
+                    whrate = (float)(obj.rect.width)/(obj.rect.height+0.00001)
 
                     if obj.rect.width > 25 and 0.8<=whrate and whrate<=1.1:
 
-                        jitter_rect = image_2_rect_obj_with_jitter(x,obj,pull_dir,0.25,0.9,100)
+                        # jitter_rect = image_2_rect_obj_with_jitter(x,obj,pull_dir,0.25,0.9,100)
+                        jitter_rect = image_2_rect_obj_with_jitter(x,obj,pull_dir,0.5,0.95,100)
+                        # jitter_rect = image_2_rect_obj_with_jitter(x,obj,pull_dir,0.7,0.9,100)
 
                         everymaxnum = 40
                         cur_count = 0
@@ -211,7 +213,7 @@ def select_face_from_package_with_jitter(package_dir, pull_dir):
                                     os.mkdir(foldername)
 
                                 # Write image and annotation
-                                write_basename = "%s_%03d" % (os.path.join(foldername,basename),cur_count)
+                                write_basename = "%s_%02d_%03d" % (os.path.join(foldername,basename),m,cur_count)
 
                                 # write_image_and_annotation(x,write_basename,
                                 #     source,obj,[jrect],
@@ -220,7 +222,7 @@ def select_face_from_package_with_jitter(package_dir, pull_dir):
 
                                 write_image_and_annotation(x,write_basename,
                                     source,obj,[jrect],
-                                    32, 32,
+                                    24, 24,
                                     False)
 
                                 total_export+=1
@@ -232,7 +234,10 @@ def select_face_from_package_with_jitter(package_dir, pull_dir):
 
 if __name__ == '__main__':
     package_dir = u'/home/racine/datasets/rxface/package/VzenithFace_30k'
-    pull_dir = u'/home/racine/workdatas/test/pull/norm_32x32'
+    pull_dir = u'/home/racine/workdatas/test/pull/norm_24x24_0.5_0.9'
+
+    # package_dir = u"/home/racine/datasets/rxface/package/wider_face/WIDER_train/"
+    # pull_dir = u'/home/racine/workdatas/test/pull/norm_widerface_32x32_big'
     # pull_dir = u'/tmp/test/pull/org'
 
     if False == os.path.exists(u'/home/racine/workdatas/test'):
