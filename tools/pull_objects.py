@@ -111,15 +111,22 @@ def pull_face_from_package(package_dir, pull_dir, crop_scale_x = 1.0, crop_scale
 
                     if obj.rect.width > 25 and 0.8<=whrate and whrate<=1.1:
 
-                        if total_export % max_folder_num == 0:
-                            folder_idx+=1
+                        if obj.blur == 0 and \
+                           obj.expression == 0 and \
+                           obj.illumination == 0 and \
+                           obj.occlusion == 0 and \
+                           obj.pose == 0 and \
+                           obj.invalid == 0:
 
-                        foldername = os.path.join(pull_dir,(str)(folder_idx))
-                        if False == os.path.exists(foldername):
-                            os.mkdir(foldername)
+                            if total_export % max_folder_num == 0:
+                                folder_idx+=1
 
-                        pull_single(source_dir,source,obj,x,foldername)
-                        total_export+=1
+                            foldername = os.path.join(pull_dir,(str)(folder_idx))
+                            if False == os.path.exists(foldername):
+                                os.mkdir(foldername)
+
+                            pull_single(source_dir,source,obj,x,foldername)
+                            total_export+=1
 
     print "total_export: %d / %d (%f%%)" % (total_export,total_samples,total_export*100.0/total_samples)
 
@@ -128,6 +135,8 @@ def pull_face_from_package(package_dir, pull_dir, crop_scale_x = 1.0, crop_scale
 if __name__ == '__main__':
     package_dir = u'/home/racine/datasets/rxface/package/VzenithFace_30k'
     pull_dir = u'/tmp/test/pull'
+    # package_dir = u'/data/da/datasets/rxface/image_struct/lift/A/YDXJ0677.MP4/'
+    # pull_dir = u'/data/da/datasets/rxface/image_struct/lift/A/pull'
 
     if False == os.path.exists(pull_dir):
         os.mkdir(pull_dir)

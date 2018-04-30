@@ -38,13 +38,6 @@ def extract_obj_from_jitterzone(objects_list, zone, overlap_th = 0.5):
             overlap_list.append(overlap)
             overlap_obj.append(obj)
 
-        # print overlap_A, overlap_B
-
-    # print "============================", len(overlap_list)
-    # if len(overlap_list)>1:
-    #     for overlap in overlap_list:
-    #         print "***",overlap
-
     return overlap_obj
 
 def image_2_rect_obj_with_jitter(img, single_obj, save_dir, range0 = 0.25, range1 = 0.9, num = 40):
@@ -52,7 +45,8 @@ def image_2_rect_obj_with_jitter(img, single_obj, save_dir, range0 = 0.25, range
 
     jitter_rect = []
 
-    eRect = obj.rect.margined(img,0.2,0.2)
+    # eRect = obj.rect.margined(img,0.2,0.2)
+    eRect = obj.rect
 
     scale_x = np.random.rand(1,num)*(range1-range0)+range0
     scale_y = np.random.rand(1,num)*(range1-range0)+range0
@@ -187,13 +181,13 @@ def select_face_from_package_with_jitter(package_dir, pull_dir):
                     obj = object[m]
                     whrate = (float)(obj.rect.width)/(obj.rect.height+0.00001)
 
-                    if obj.rect.width > 25 and 0.8<=whrate and whrate<=1.1:
-
-                        # jitter_rect = image_2_rect_obj_with_jitter(x,obj,pull_dir,0.25,0.9,100)
-                        jitter_rect = image_2_rect_obj_with_jitter(x,obj,pull_dir,0.5,0.95,100)
+                    # if obj.rect.width > 25 and 0.8<=whrate and whrate<=1.1:
+                    if True:
+                        jitter_rect = image_2_rect_obj_with_jitter(x,obj,pull_dir,0.4,0.9,100*5)
+                        # jitter_rect = image_2_rect_obj_with_jitter(x,obj,pull_dir,0.5,0.95,100)
                         # jitter_rect = image_2_rect_obj_with_jitter(x,obj,pull_dir,0.7,0.9,100)
 
-                        everymaxnum = 40
+                        everymaxnum = 40*2
                         cur_count = 0
                         for jrect in jitter_rect:
                             cur_count+=1
@@ -222,7 +216,8 @@ def select_face_from_package_with_jitter(package_dir, pull_dir):
 
                                 write_image_and_annotation(x,write_basename,
                                     source,obj,[jrect],
-                                    24, 24,
+                                    # 24, 24,
+                                    64, 64,
                                     False)
 
                                 total_export+=1
@@ -233,18 +228,20 @@ def select_face_from_package_with_jitter(package_dir, pull_dir):
 
 
 if __name__ == '__main__':
-    package_dir = u'/home/racine/datasets/rxface/package/VzenithFace_30k'
-    pull_dir = u'/home/racine/workdatas/test/pull/norm_24x24_0.5_0.9'
+    # package_dir = u'/home/racine/datasets/rxface/package/VzenithFace_30k'
+    # pull_dir = u'/home/racine/workdatas/test/pull/norm_64x64_0.5_0.9'
+    package_dir = u'/home/racine/datasets/rxface/package/image_struct/lift/A/YDXJ0679.MP4'
+    pull_dir = u'/home/racine/workdatas/test/db_lift/A_YDXJ0679.MP4_norm_64x64_0.4_0.9_80'
 
-    # package_dir = u"/home/racine/datasets/rxface/package/wider_face/WIDER_train/"
-    # pull_dir = u'/home/racine/workdatas/test/pull/norm_widerface_32x32_big'
+    # package_dir = u"/home/racine/datasets/rxface/package/wider_face/WIDER_val/"
+    # pull_dir = u'/home/racine/workdatas/test/pull/norm_widerface_24x24_0.5_0.9_easy_val'
     # pull_dir = u'/tmp/test/pull/org'
 
-    if False == os.path.exists(u'/home/racine/workdatas/test'):
-        os.mkdir(u'/home/racine/workdatas/test/')
-
-    if False == os.path.exists(u'/home/racine/workdatas/test/pull'):
-        os.mkdir(u'/home/racine/workdatas/test/pull')
+    # if False == os.path.exists(u'/home/racine/workdatas/test'):
+    #     os.mkdir(u'/home/racine/workdatas/test/')
+    #
+    # if False == os.path.exists(u'/home/racine/workdatas/test/pull'):
+    #     os.mkdir(u'/home/racine/workdatas/test/pull')
 
     if False == os.path.exists(pull_dir):
         os.mkdir(pull_dir)
